@@ -34,9 +34,9 @@ model Register {
   createdAt   DateTime   @default(now()) @map(name: "created_at")
   updatedAt   DateTime   @updatedAt @map(name: "updated_at")
   project     Project?   @relation(fields: [projectId], references: [id])
-  projectId   String
+  projectId   String?
   parentId    String?
-  parent      Register?  @relation("ParentRegisters", fields: [parentId], references: [id])
+  parent      Register?  @relation("ParentRegisters", fields: [parentId], references: [id], onDelete: Cascade)
   registers   Register[] @relation("ParentRegisters")
 }
 
