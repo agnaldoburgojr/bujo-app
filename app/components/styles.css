@@ -1,0 +1,19 @@
+.icon svg:hover {
+  cursor: pointer;
+}
+
+.icon svg path {
+  transition: all 0.3s ease-in-out;
+}
+
+.icon svg:hover path {
+  stroke: #15151F;
+}
+
+.dark svg path {
+  stroke: #15151F;
+}
+
+.dark svg:hover path {
+  stroke: #15151F;
+}
