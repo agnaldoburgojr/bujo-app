@@ -2,21 +2,23 @@
 import { useCallback, useEffect, useState } from 'react'
 import { v4 as uuidv4 } from 'uuid';
 import { Icon } from './components/Icon';
+import { format } from 'date-fns'
+import ptBR from 'date-fns/locale/pt-BR';
 
-enum Status {
-  'TODO',
-  'DONE',
-  'GOTO',
-  'CANCELED'
+export enum Status {
+  TO_DO = 'TO_DO',
+  DONE = 'DONE',
+  TO_TOMORROW = 'TO_TOMORROW',
+  CANCELED = 'CANCELED'
 }
 
 const getIconName = (status: Status) => {
   switch (status) {
-    case Status.TODO:
+    case Status.TO_DO:
       return 'task'
     case Status.DONE:
       return 'done'
-    case Status.GOTO:
+    case Status.TO_TOMORROW:
       return 'next'
     case Status.CANCELED:
       return 'delete'
@@ -26,8 +28,38 @@ const getIconName = (status: Status) => {
 }
 type Register ={
   id: string,
-  content: string
+  description: string
   status: Status
+}
+
+
+async function getRegisters(date: string) {
+  const res = await fetch(`http://localhost:3000/api/registers?date=${date}`)
+  return res.json()
+}
+
+async function createRegister(date: string, description: string) {
+  const res = await fetch(`http://localhost:3000/api/registers`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({date, description})
+  })
+  return res.json()
+}
+
+
+
+async function updateRegister({id, description, status} : Register) {
+  const res = await fetch(`http://localhost:3000/api/registers/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({description, status, date: '2023-06-13'})
+  })
+  return res.json()
 }
 
 export default function Home() {
@@ -37,6 +69,13 @@ export default function Home() {
   const [editable, setEditable] = useState('')
   const [contentEditable, setContentEditable] = useState('')
   const [seeOptions, setSeeOptions] = useState('')
+  const today = format(new Date(), 'dd.MM.yyyy') + ' - ' + format(new Date(), 'EEE', {locale: ptBR})
+
+  useEffect(() => {
+    getRegisters('2023-06-13').then((registers) => {
+      setLines(registers)
+    })
+  }, [])
 
   const handleKeyPress = useCallback((event: KeyboardEvent) => {
     if (event.ctrlKey === true && event.key === 'n') {
@@ -55,21 +94,22 @@ export default function Home() {
     setTask(e.target.value)
   }
   
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       lines.push({
         id: uuidv4(),
-        content: task,
-        status: Status.TODO
+        description: task,
+        status: Status.TO_DO
       })
       setTask('')
+      await createRegister('2023-06-13', task)
     }
   }
 
   const handleClick = (e: React.MouseEvent<HTMLParagraphElement, MouseEvent>, item: Register) => {
     if(e.detail === 2){
       setEditable(item.id)
-      setContentEditable(item.content)
+      setContentEditable(item.description)
     }
   }
 
@@ -77,23 +117,24 @@ export default function Home() {
     setContentEditable(e.target.value)
   }
 
-  const handleKeyDownEdit = (e: React.KeyboardEvent<HTMLInputElement>, l: Register) => {
+  const handleKeyDownEdit = async(e: React.KeyboardEvent<HTMLInputElement>, l: Register) => {
     if (e.key === 'Enter') {
       const position = lines.findIndex((l: Register) => l.id === editable)
       const newLines = lines
       newLines[position] = {
         ...l,
         id: editable,
-        content: contentEditable,
+        description: contentEditable,
         
       }
       setLines([...newLines])
       setContentEditable('')
       setEditable('')
+      await updateRegister({...l, description: contentEditable})
     }
   }
 
-  const handleStatus = (register: Register, status: Status) => {
+  const handleStatus = async(register: Register, status: Status) => {
     const position = lines.findIndex((l: Register) => l.id === register.id)
     const newLines = lines
     newLines[position] = {
@@ -101,6 +142,7 @@ export default function Home() {
       status
     }
     setLines([...newLines])
+    await updateRegister({...register, status})
   }
 
 
@@ -115,14 +157,14 @@ export default function Home() {
         </div>
       </nav>
       <div className='mt-16'>
-        <p className='font-semibold	text-xs mb-2 text-slate-500'>12.06.2023 - TER</p>
+        <p className='font-semibold	text-xs mb-2 text-slate-500'>{today}</p>
         <div >
         { lines.map((l: Register) => (
           <div key={l.id}>
             {editable === l.id ? (
               <input
                 className='w-full p-2 outline-black h-8'
-                placeholder={l.content} 
+                placeholder={l.description} 
                 onChange={handleEdit}
                 onKeyDown={(e) => handleKeyDownEdit(e, l)}
                 onBlur={() => {
@@ -134,29 +176,30 @@ export default function Home() {
               />
             ) : (
               <div 
-                className='flex items-center -ml-20'
+                className='flex items-center -ml-[6rem]'
                 onMouseEnter={()=> setSeeOptions(l.id)}
                 onMouseLeave={()=> setSeeOptions('')}
               >
                 {
                   seeOptions === l.id ? 
                   (
-                    <div className='flex cursor-pointer w-20'>
+                    <div className='flex cursor-pointer w-[6rem]'>
+                      <Icon name='task' onClick={()=> handleStatus(l, Status.TO_DO)}/>
                       <Icon name='done' onClick={()=> handleStatus(l, Status.DONE)}/>
-                      <Icon name='next' onClick={()=> handleStatus(l, Status.GOTO)}/>
+                      <Icon name='next' onClick={()=> handleStatus(l, Status.TO_TOMORROW)}/>
                       <Icon name='delete' onClick={()=> handleStatus(l, Status.CANCELED)}/>
                     </div>
                   ): (
-                    <div className='w-20'></div>
+                    <div className='w-[6rem]'></div>
                   )
                 }
                 <div className='my-1 flex items-center relative'>
-                  <Icon name={getIconName(l.status)} isStatic dark/>
+                  <Icon name={getIconName((l.status))} isStatic dark/>
                   <div>
-                    <p className={`ml-2 ${l.status === Status.CANCELED && 'line-through decoration-2'}`} onClick={(e) => handleClick(e, l)} >
-                      {l.content}
+                    <p className={`ml-2 ${(l.status) === Status.CANCELED && 'line-through decoration-2'}`} onClick={(e) => handleClick(e, l)} >
+                      {l.description}
                     </p>
-                    {l.status === Status.CANCELED && 
+                    {(l.status) === Status.CANCELED && 
                       <div className='absolute top-0 left-4'>
                         <Icon name='delete' isStatic dark
                       />

@@ -19,7 +19,8 @@ export async function GET(request: Request, {params}: Params) {
 
 export async function PUT(request: NextRequest, {params}: Params) {
   const registerId = params.registerId;
-  const {description, date} = await request.json()
+  const {description, date, status} = await request.json()
+  console.log(description, date, status)
   try {
     const register = await prisma.register.update({
       where: {
@@ -27,7 +28,8 @@ export async function PUT(request: NextRequest, {params}: Params) {
       },
       data: {
         date: new Date(date),
-        description
+        description,
+        status
       }
     })
     return NextResponse.json(register, {status: 200})

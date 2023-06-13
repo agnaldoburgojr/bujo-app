@@ -1,8 +1,18 @@
 import { NextResponse } from "next/server"
 import  prisma  from "../../lib/prisma"
+import { NextApiRequest } from "next"
 
-export async function GET() {
-  const registers = await prisma.register.findMany()
+export async function GET(request: Request): Promise<NextResponse> {
+  const { searchParams } = new URL(request.url)
+  const date: string = searchParams.get('date') as string
+  const registers = await prisma.register.findMany({
+    where: {
+      date: {
+        gte: new Date(date)
+      }
+    },
+  })
+  //const registers = await prisma.register.findMany()
   return NextResponse.json(registers)
 }
 
