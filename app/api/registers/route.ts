@@ -7,9 +7,14 @@ export async function GET(request: Request): Promise<NextResponse> {
   const date: string = searchParams.get('date') as string
   const registers = await prisma.register.findMany({
     where: {
+      
       date: {
+        
         gte: new Date(date)
       }
+    },
+    orderBy: {
+      createdAt: 'asc'
     },
   })
   //const registers = await prisma.register.findMany()

@@ -1,9 +1,13 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useState } from 'react'
 import { v4 as uuidv4 } from 'uuid';
 import { Icon } from './components/Icon';
-import { format } from 'date-fns'
+import { format, set } from 'date-fns'
 import ptBR from 'date-fns/locale/pt-BR';
+
+const today = new Date()
+const formattedDate = format(new Date(), 'dd.MM.yyyy') + ' - ' + format(new Date(), 'EEE', {locale: ptBR}).substring(0, 3)
+const apiDate = format(new Date(), 'yyyy-MM-dd')
 
 export enum Status {
   TO_DO = 'TO_DO',
@@ -57,7 +61,7 @@ async function updateRegister({id, description, status} : Register) {
     headers: {
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({description, status, date: '2023-06-13'})
+    body: JSON.stringify({description, status, date: apiDate})
   })
   return res.json()
 }
@@ -69,11 +73,13 @@ export default function Home() {
   const [editable, setEditable] = useState('')
   const [contentEditable, setContentEditable] = useState('')
   const [seeOptions, setSeeOptions] = useState('')
-  const today = format(new Date(), 'dd.MM.yyyy') + ' - ' + format(new Date(), 'EEE', {locale: ptBR})
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    getRegisters('2023-06-13').then((registers) => {
+    setLoading(true)
+    getRegisters(apiDate).then((registers) => {
       setLines(registers)
+      setLoading(false)
     })
   }, [])
 
@@ -102,7 +108,7 @@ export default function Home() {
         status: Status.TO_DO
       })
       setTask('')
-      await createRegister('2023-06-13', task)
+      await createRegister(apiDate, task)
     }
   }
 
@@ -157,7 +163,19 @@ export default function Home() {
         </div>
       </nav>
       <div className='mt-16'>
-        <p className='font-semibold	text-xs mb-2 text-slate-500'>{today}</p>
+        <p className='font-semibold	text-xs mb-2 text-slate-500 uppercase'>{formattedDate}</p>
+        {loading ? (
+          <div role="status" className="space-y-8 animate-pulse md:space-y-0 md:space-x-8 md:flex md:items-center">
+            <div className="w-full mt-4">
+              <div className="h-5 bg-gray-200 rounded-full dark:bg-gray-700 w-60 mb-4"></div>
+              <div className="h-5 bg-gray-200 rounded-full dark:bg-gray-700 w-60 mb-4"></div>
+              <div className="h-5 bg-gray-200 rounded-full dark:bg-gray-700 w-60 mb-4"></div>
+              <div className="h-5 bg-gray-200 rounded-full dark:bg-gray-700 w-60 mb-4"></div>
+              <div className="h-5 bg-gray-200 rounded-full dark:bg-gray-700 w-60 mb-4"></div>
+            </div>
+            <span className="sr-only">Loading...</span>
+          </div>
+        ):(
         <div >
         { lines.map((l: Register) => (
           <div key={l.id}>
@@ -226,6 +244,7 @@ export default function Home() {
           />
         )}
         </div>
+       )}
       </div>
      </div>
     </main>
